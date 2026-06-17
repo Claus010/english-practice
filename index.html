@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>每日英文訓練器</title>
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body>
+    <main class="app-shell">
+      <section class="hero">
+        <div>
+          <p class="eyebrow">TOEIC 300-400 -> 600-700</p>
+          <h1>每日英文訓練器</h1>
+          <p class="hero-copy">每天 20-35 分鐘，練字彙、聽讀、文法和短句輸出。你的目標不是暴衝，是穩穩累積 18 個月。</p>
+        </div>
+        <div class="goal-panel" aria-label="學習目標">
+          <span>今日進度</span>
+          <strong id="todayScore">0%</strong>
+          <div class="progress-track">
+            <div id="todayBar" class="progress-fill"></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="dashboard" aria-label="學習總覽">
+        <article>
+          <span>連續天數</span>
+          <strong id="streakDays">0</strong>
+        </article>
+        <article>
+          <span>累積完成</span>
+          <strong id="totalDone">0</strong>
+        </article>
+        <article>
+          <span>目前階段</span>
+          <strong id="phaseName">打底期</strong>
+        </article>
+      </section>
+
+      <section class="planner">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Daily Plan</p>
+            <h2>今天的訓練</h2>
+          </div>
+          <div class="planner-actions">
+            <button id="extraLesson" type="button">加練下一課</button>
+            <button id="resetToday" class="ghost-button" type="button">重設目前這課</button>
+          </div>
+        </div>
+        <div id="taskList" class="task-list"></div>
+      </section>
+
+      <section class="practice-grid">
+        <article class="practice-card">
+          <div class="card-heading">
+            <p class="eyebrow">Vocabulary</p>
+            <h2>今日字彙</h2>
+          </div>
+          <div id="wordList" class="word-list"></div>
+        </article>
+
+        <article class="practice-card">
+          <div class="card-heading">
+            <p class="eyebrow">Listening & Reading</p>
+            <h2>短文聽讀</h2>
+          </div>
+          <p id="readingText" class="reading-text"></p>
+          <div class="button-row">
+            <button id="speakText" type="button">播放英文</button>
+            <button id="showTranslation" class="ghost-button" type="button">顯示翻譯</button>
+          </div>
+          <p id="translationText" class="translation-text" hidden></p>
+        </article>
+
+        <article class="practice-card">
+          <div class="card-heading">
+            <p class="eyebrow">Grammar</p>
+            <h2>文法小測驗</h2>
+          </div>
+          <p id="quizQuestion" class="quiz-question"></p>
+          <button id="showQuizTranslation" class="ghost-button inline-helper" type="button">題目中文</button>
+          <p id="quizTranslation" class="translation-text" hidden></p>
+          <div id="quizOptions" class="quiz-options"></div>
+          <p id="quizFeedback" class="feedback"></p>
+          <div id="grammarMistakeList" class="grammar-mistakes"></div>
+        </article>
+
+        <article class="practice-card">
+          <div class="card-heading">
+            <p class="eyebrow">Output</p>
+            <h2>一句輸出</h2>
+          </div>
+          <p id="writingPrompt" class="writing-prompt"></p>
+          <button id="showWritingTranslation" class="ghost-button inline-helper" type="button">顯示中文</button>
+          <p id="writingTranslation" class="translation-text" hidden></p>
+          <textarea id="writingBox" rows="5" placeholder="用英文寫 1-3 句，不用完美，先寫出來。"></textarea>
+          <div class="button-row">
+            <button id="saveWriting" type="button">儲存</button>
+            <button id="sampleAnswer" class="ghost-button" type="button">看範例</button>
+          </div>
+          <p id="writingHint" class="feedback"></p>
+        </article>
+      </section>
+
+      <section class="weekly-test">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Weekly Test</p>
+            <h2>每週單字考試</h2>
+          </div>
+          <div class="weekly-controls">
+            <button id="startWeeklyTest" type="button">開始本週測驗</button>
+            <button id="submitWeeklyTest" class="ghost-button" type="button" hidden>交卷</button>
+          </div>
+        </div>
+        <div class="weekly-layout">
+          <article class="weekly-panel">
+            <p id="weeklyStatus" class="weekly-status"></p>
+            <div id="weeklyQuiz" class="weekly-quiz"></div>
+            <p id="weeklyResult" class="feedback"></p>
+          </article>
+          <article class="weekly-panel">
+            <div class="card-heading">
+              <div>
+                <p class="eyebrow">Review</p>
+                <h2>錯題紀錄</h2>
+              </div>
+              <button id="clearWrongWords" class="ghost-button" type="button">清空</button>
+            </div>
+            <div id="wrongWordList" class="wrong-list"></div>
+          </article>
+        </div>
+      </section>
+
+      <section class="roadmap">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">18 Month Roadmap</p>
+            <h2>一年半提升路線</h2>
+          </div>
+        </div>
+        <div class="timeline">
+          <article>
+            <span>1-3 個月</span>
+            <h3>打底期</h3>
+            <p>每天背 8-12 個常用字，熟悉基本時態、句型和職場生活題材。</p>
+          </article>
+          <article>
+            <span>4-9 個月</span>
+            <h3>加速期</h3>
+            <p>加入 Part 3/4 短對話、Part 5 文法題，練習抓關鍵資訊。</p>
+          </article>
+          <article>
+            <span>10-18 個月</span>
+            <h3>衝刺期</h3>
+            <p>每週做一次限時題組，整理錯題，讓閱讀速度和聽力穩定上升。</p>
+          </article>
+        </div>
+      </section>
+    </main>
+
+    <script src="app.js"></script>
+  </body>
+</html>
