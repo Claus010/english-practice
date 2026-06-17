@@ -132,6 +132,30 @@ h3 {
   line-height: 1.8;
 }
 
+.page-links {
+  display: flex;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.page-links a {
+  display: inline-flex;
+  min-height: 42px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(255, 255, 255, 0.72);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.14);
+  color: #ffffff;
+  padding: 0 16px;
+  text-decoration: none;
+  font-weight: 800;
+}
+
+.page-links a:hover {
+  background: rgba(255, 255, 255, 0.24);
+}
+
 .goal-panel,
 .dashboard article,
 .practice-card,
@@ -595,6 +619,11 @@ h3 {
   }
 
   button {
+    width: 100%;
+  }
+
+  .page-links,
+  .page-links a {
     width: 100%;
   }
 }
