@@ -1764,30 +1764,50 @@ function renderQuiz() {
     const button = document.createElement("button");
     button.type = "button";
     button.textContent = option;
-    button.addEventListener("click", () => {
-      const correct = option === lessonForToday.quiz.answer;
-      [...options.querySelectorAll("button")].forEach((optionButton) => {
-        optionButton.disabled = true;
-      });
-      button.textContent = `${correct ? "O" : "X"} ${option}`;
-      button.classList.add(correct ? "is-correct" : "is-wrong");
-      if (!correct) {
-        const correctButton = [...options.querySelectorAll("button")]
-          .find((optionButton) => optionButton.textContent === lessonForToday.quiz.answer);
-        if (correctButton) {
-          correctButton.textContent = `O ${lessonForToday.quiz.answer}`;
-          correctButton.classList.add("is-correct");
-        }
-        saveGrammarMistake(option);
-        renderGrammarMistakes();
-      }
-      document.getElementById("quizFeedback").textContent = correct
-        ? `答對了。${lessonForToday.quiz.explain}`
-        : `這題答案是 ${lessonForToday.quiz.answer}。${lessonForToday.quiz.explain}`;
-      completeTask("grammar");
-    });
+    button.dataset.option = option;
+    button.addEventListener("click", () => answerGrammarQuiz(option));
     options.append(button);
   });
+
+  // 今天這課已經作答過（例如重新整理頁面），直接顯示結果，不能再答一次。
+  const savedChoice = currentDay().grammarChoice;
+  if (savedChoice) showQuizResult(savedChoice);
+}
+
+function answerGrammarQuiz(option) {
+  const day = currentDay();
+  if (day.grammarChoice) return;
+  day.grammarChoice = option;
+
+  if (option !== lessonForToday.quiz.answer) {
+    saveGrammarMistake(option);
+    renderGrammarMistakes();
+  }
+
+  showQuizResult(option);
+  completeTask("grammar");
+}
+
+function showQuizResult(chosen) {
+  const options = document.getElementById("quizOptions");
+  const answer = lessonForToday.quiz.answer;
+  const correct = chosen === answer;
+
+  [...options.querySelectorAll("button")].forEach((button) => {
+    const option = button.dataset.option;
+    button.disabled = true;
+    if (option === answer) {
+      button.textContent = `O ${option}`;
+      button.classList.add("is-correct");
+    } else if (option === chosen) {
+      button.textContent = `X ${option}`;
+      button.classList.add("is-wrong");
+    }
+  });
+
+  document.getElementById("quizFeedback").textContent = correct
+    ? `答對了。${lessonForToday.quiz.explain}`
+    : `這題答案是 ${answer}。${lessonForToday.quiz.explain}`;
 }
 
 function renderWriting() {

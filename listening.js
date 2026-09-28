@@ -121,7 +121,9 @@ const weeklyPacks = [
 ];
 
 const state = loadState();
+// activeLessonNumber 永遠代表「內建課程」的課號；匯入教材另外用 activeSource 追蹤，兩者互不覆蓋。
 let activeLessonNumber = getActiveLessonNumber();
+let activeSource = getInitialSource();
 let weeklyQuestions = [];
 
 const elements = {
@@ -131,6 +133,7 @@ const elements = {
   totalDone: document.querySelector("#totalDone"),
   phaseName: document.querySelector("#phaseName"),
   taskList: document.querySelector("#taskList"),
+  extraLesson: document.querySelector("#extraLesson"),
   lessonTitle: document.querySelector("#lessonTitle"),
   lessonMeta: document.querySelector("#lessonMeta"),
   transcriptText: document.querySelector("#transcriptText"),
@@ -203,8 +206,10 @@ function render() {
   elements.phaseName.textContent = getPhaseName();
 
   elements.lessonTitle.textContent = lesson.title;
-  elements.lessonMeta.textContent = `第 ${getWeekIndex() + 1} 週 · ${pack.name}`;
-  elements.openSource.hidden = !lesson.sourceUrl;
+  elements.lessonMeta.textContent = isImported()
+    ? `匯入教材 · ${pack.name}`
+    : `第 ${getBuiltinWeekNumber() + 1} 週 · ${pack.name}`;
+  elements.openSource.hidden = !isSafeUrl(lesson.sourceUrl);
   elements.transcriptText.textContent = lesson.audio;
   elements.translationText.textContent = lesson.translation;
   elements.dictationPrompt.textContent = "請聽「重播關鍵句」後，把英文句子打在下方。";
@@ -214,11 +219,25 @@ function render() {
   elements.shadowNote.value = day.note || "";
 
   renderTasks(day);
+  renderExtraLessonButton(day);
   renderSourceLessons();
   renderSegments(lesson);
   renderQuiz(lesson, day);
   renderMistakes();
   updateWeeklyStatus();
+}
+
+function renderExtraLessonButton(day) {
+  if (isImported()) {
+    elements.extraLesson.disabled = false;
+    elements.extraLesson.textContent = "回到內建課程";
+    elements.extraLesson.title = "";
+    return;
+  }
+
+  elements.extraLesson.disabled = !day.lessonFinished;
+  elements.extraLesson.textContent = "加練下一課";
+  elements.extraLesson.title = day.lessonFinished ? "" : "完成今天的 4 個任務後，才能加練下一課。";
 }
 
 function saveSourceLesson() {
@@ -232,10 +251,17 @@ function saveSourceLesson() {
     return;
   }
 
+  if (sourceUrl && !isSafeUrl(sourceUrl)) {
+    elements.sourceStatus.textContent = "連結需要以 http:// 或 https:// 開頭。";
+    return;
+  }
+
   const segments = splitIntoSegments(transcript);
   const dictation = segments.find((segment) => normalize(segment).length >= 18) || transcript;
+  const id = createImportedId();
 
   state.importedLessons.unshift({
+    id,
     title,
     sourceUrl,
     audio: transcript,
@@ -252,13 +278,12 @@ function saveSourceLesson() {
     importedAt: todayKey
   });
 
-  activeLessonNumber = 0;
-  state.days[todayKey] = createEmptyDay();
+  setSource({ type: "imported", id });
   elements.sourceTitle.value = "";
   elements.sourceUrl.value = "";
   elements.sourceTranscript.value = "";
   elements.sourceNote.value = "";
-  elements.sourceStatus.textContent = "已加入今日教材，現在的聽力練習會使用這份匯入內容。";
+  elements.sourceStatus.textContent = "已加入並切換到這份教材。內建課程的進度不受影響，按「回到內建課程」即可切回。";
   saveState();
   render();
 }
@@ -269,20 +294,41 @@ function renderSourceLessons() {
     return;
   }
 
-  elements.sourceLessonList.innerHTML = state.importedLessons.map((lesson, index) => `
-    <article class="source-item">
+  const builtinActive = !isImported();
+  const builtinRow = `
+    <article class="source-item${builtinActive ? " is-active" : ""}">
       <div>
-        <strong>${lesson.title}</strong>
-        <span>${lesson.sourceUrl || "沒有附連結"} · 匯入 ${lesson.importedAt || todayKey}</span>
+        <strong>內建 12 週課程</strong>
+        <span>第 ${getBuiltinWeekNumber() + 1} 週 · ${escapeHtml(getBuiltinPack().name)}</span>
       </div>
-      <button type="button" class="ghost-button" data-source-index="${index}">使用</button>
+      <button type="button" class="ghost-button" data-source-builtin ${builtinActive ? "disabled" : ""}>${builtinActive ? "使用中" : "使用"}</button>
     </article>
-  `).join("");
+  `;
 
-  elements.sourceLessonList.querySelectorAll("[data-source-index]").forEach((button) => {
+  const importedRows = state.importedLessons.map((lesson) => {
+    const active = isImported() && activeSource.id === lesson.id;
+    return `
+      <article class="source-item${active ? " is-active" : ""}">
+        <div>
+          <strong>${escapeHtml(lesson.title)}</strong>
+          <span>${escapeHtml(lesson.sourceUrl || "沒有附連結")} · 匯入 ${escapeHtml(lesson.importedAt || todayKey)}</span>
+        </div>
+        <button type="button" class="ghost-button" data-source-id="${escapeHtml(lesson.id)}" ${active ? "disabled" : ""}>${active ? "使用中" : "使用"}</button>
+      </article>
+    `;
+  }).join("");
+
+  elements.sourceLessonList.innerHTML = builtinRow + importedRows;
+
+  elements.sourceLessonList.querySelector("[data-source-builtin]").addEventListener("click", () => {
+    setSource({ type: "builtin" });
+    saveState();
+    render();
+  });
+
+  elements.sourceLessonList.querySelectorAll("[data-source-id]").forEach((button) => {
     button.addEventListener("click", () => {
-      activeLessonNumber = Number(button.dataset.sourceIndex);
-      state.days[todayKey] = createEmptyDay();
+      setSource({ type: "imported", id: button.dataset.sourceId });
       saveState();
       render();
     });
@@ -293,15 +339,15 @@ function clearSourceLessons() {
   if (!state.importedLessons.length) return;
   if (!confirm("確定要清空所有匯入教材嗎？原本內建 12 週課程不會被刪除。")) return;
   state.importedLessons = [];
-  activeLessonNumber = state.studyCursor || 0;
-  state.days[todayKey] = createEmptyDay();
+  state.importedDays = {};
+  setSource({ type: "builtin" });
   saveState();
   render();
 }
 
 function openSourceLesson() {
   const sourceUrl = getLesson().sourceUrl;
-  if (!sourceUrl) return;
+  if (!isSafeUrl(sourceUrl)) return;
   window.open(sourceUrl, "_blank", "noopener");
 }
 
@@ -309,7 +355,7 @@ function renderSegments(lesson) {
   const segments = splitIntoSegments(lesson.audio);
   elements.segmentList.innerHTML = segments.map((segment, index) => `
     <button type="button" data-segment="${index}">
-      ${index + 1}. ${segment}
+      ${index + 1}. ${escapeHtml(segment)}
     </button>
   `).join("");
 
@@ -349,22 +395,23 @@ function renderQuiz(lesson, day) {
       : `答錯了。正確答案是：${lesson.answer}`
     : "";
 
-  elements.quizOptions.innerHTML = lesson.options.map((option) => {
+  elements.quizOptions.innerHTML = lesson.options.map((option, index) => {
     const selected = day.quizChoice === option;
     const className = selected
       ? option === lesson.answer ? "is-correct" : "is-wrong"
       : day.quizChoice && option === lesson.answer ? "is-correct" : "";
-    return `<button type="button" class="${className}" ${day.quizChoice ? "disabled" : ""}>${option}</button>`;
+    return `<button type="button" class="${className}" data-option="${index}" ${day.quizChoice ? "disabled" : ""}>${escapeHtml(option)}</button>`;
   }).join("");
 
   elements.quizOptions.querySelectorAll("button").forEach((button) => {
-    button.addEventListener("click", () => answerDailyQuiz(button.textContent));
+    button.addEventListener("click", () => answerDailyQuiz(lesson.options[Number(button.dataset.option)]));
   });
 }
 
 function answerDailyQuiz(choice) {
   const day = getDayState();
   const lesson = getLesson();
+  if (day.quizChoice) return;
   day.quizChoice = choice;
   day.tasks.quiz = true;
 
@@ -445,22 +492,52 @@ function maybeFinishLesson() {
   if (isComplete && !day.lessonFinished) {
     day.lessonFinished = true;
     state.completedDates[todayKey] = true;
-    state.studyCursor = Math.max(state.studyCursor, activeLessonNumber + 1);
+    // 只有內建課程才推進課程進度；匯入教材只算「今天有練」。
+    if (!isImported()) {
+      state.studyCursor = Math.max(state.studyCursor, activeLessonNumber + 1);
+    }
   }
 }
 
 function resetToday() {
-  if (!confirm("確定要重設今天的聽力進度嗎？")) return;
-  state.days[todayKey] = createEmptyDay();
-  delete state.completedDates[todayKey];
+  if (!confirm("確定要重設目前這課的聽力進度嗎？")) return;
+
+  if (isImported()) {
+    const imported = state.importedDays[todayKey] || {};
+    imported[activeSource.id] = createEmptyDay();
+    state.importedDays[todayKey] = imported;
+  } else {
+    const day = getDayState();
+    if (day.lessonFinished && state.studyCursor === day.lessonNumber + 1) {
+      state.studyCursor = day.lessonNumber;
+    }
+    state.days[todayKey] = createEmptyDay(day.earlierDone);
+  }
+
+  // 今天若還完成過別課（加練前那一課或匯入教材），連續天數要保留。
+  if (!hasOtherCompletionToday()) {
+    delete state.completedDates[todayKey];
+  }
   saveState();
   render();
 }
 
 function goToExtraLesson() {
-  activeLessonNumber += 1;
-  state.studyCursor = Math.max(state.studyCursor, activeLessonNumber);
-  state.days[todayKey] = createEmptyDay();
+  if (isImported()) {
+    setSource({ type: "builtin" });
+    saveState();
+    render();
+    return;
+  }
+
+  const day = getDayState();
+  if (!day.lessonFinished) {
+    alert("完成今天的 4 個任務後，才能加練下一課。");
+    return;
+  }
+
+  activeLessonNumber = Math.max(state.studyCursor, activeLessonNumber + 1);
+  state.days[todayKey] = createEmptyDay(true);
   saveState();
   render();
 }
@@ -471,13 +548,13 @@ function startWeeklyTest() {
   elements.submitWeeklyTest.hidden = false;
   elements.weeklyQuiz.innerHTML = weeklyQuestions.map((item, index) => `
     <article class="weekly-question">
-      <strong>${index + 1}. ${item.title}</strong>
+      <strong>${index + 1}. ${escapeHtml(item.title)}</strong>
       <button type="button" class="ghost-button" data-play="${index}">播放題目音檔</button>
-      <p>${item.question}</p>
-      ${item.options.map((option) => `
+      <p>${escapeHtml(item.question)}</p>
+      ${item.options.map((option, optionIndex) => `
         <label>
-          <input type="radio" name="weekly-${index}" value="${option}">
-          <span>${option}</span>
+          <input type="radio" name="weekly-${index}" value="${optionIndex}">
+          <span>${escapeHtml(option)}</span>
         </label>
       `).join("")}
     </article>
@@ -496,7 +573,7 @@ function submitWeeklyTest() {
 
   weeklyQuestions.forEach((item, index) => {
     const selected = document.querySelector(`input[name="weekly-${index}"]:checked`);
-    const chosen = selected ? selected.value : "未作答";
+    const chosen = selected ? item.options[Number(selected.value)] : "未作答";
     if (chosen === item.answer) {
       correct += 1;
     } else {
@@ -512,8 +589,7 @@ function submitWeeklyTest() {
   });
 
   mistakes.forEach(saveMistake);
-  const key = `week-${getWeekIndex() + 1}`;
-  state.weeklyTests[key] = {
+  state.weeklyTests[getWeeklyKey()] = {
     date: todayKey,
     correct,
     total: weeklyQuestions.length,
@@ -527,8 +603,9 @@ function submitWeeklyTest() {
   updateWeeklyStatus();
 }
 
+// 週測永遠考「內建課程」目前這一週，不會因為正在用匯入教材而改考別的。
 function buildWeeklyQuestions() {
-  const pack = getPack();
+  const pack = getBuiltinPack();
   const seed = hashString(`${todayKey}-${pack.name}`);
   return seededShuffle(pack.lessons, seed).slice(0, 7).map((item, index) => {
     const wrongOptions = seededShuffle(
@@ -543,12 +620,16 @@ function buildWeeklyQuestions() {
   });
 }
 
+function getWeeklyKey() {
+  return `week-${getBuiltinWeekNumber() + 1}`;
+}
+
 function updateWeeklyStatus() {
-  const key = `week-${getWeekIndex() + 1}`;
-  const record = state.weeklyTests[key];
+  const record = state.weeklyTests[getWeeklyKey()];
+  const weekLabel = `第 ${getBuiltinWeekNumber() + 1} 週（${getBuiltinPack().name}）`;
   elements.weeklyStatus.textContent = record
-    ? `本週已測驗：${record.correct}/${record.total}，日期 ${record.date}。`
-    : `目前週次：第 ${getWeekIndex() + 1} 週，完成 7 天後建議做一次整週聽力測驗。`;
+    ? `${weekLabel}已測驗：${record.correct}/${record.total}，日期 ${record.date}。`
+    : `目前週次：${weekLabel}，完成 7 天後建議做一次整週聽力測驗。`;
 }
 
 function saveMistake(mistake) {
@@ -582,11 +663,11 @@ function renderMistakes() {
     .reverse()
     .map((item) => `
       <article class="wrong-item">
-        <strong>${item.title} · ${item.source}</strong>
-        <span>題目：${item.question}</span>
-        <span>你的答案：${item.chosen}</span>
-        <span>正確答案：${item.answer}</span>
-        <span>累積 ${item.count} 次 · 最近 ${item.updatedAt}</span>
+        <strong>${escapeHtml(item.title)} · ${escapeHtml(item.source)}</strong>
+        <span>題目：${escapeHtml(item.question)}</span>
+        <span>你的答案：${escapeHtml(item.chosen)}</span>
+        <span>正確答案：${escapeHtml(item.answer)}</span>
+        <span>累積 ${item.count} 次 · 最近 ${escapeHtml(item.updatedAt)}</span>
       </article>
     `).join("");
 }
@@ -633,34 +714,68 @@ function getActiveLessonNumber() {
   return state.studyCursor || 0;
 }
 
-function getWeekIndex() {
-  if (state.importedLessons.length) return 0;
-  return Math.floor(activeLessonNumber / 7) % weeklyPacks.length;
+// 匯入教材的選擇只在當天有效；隔天打開會回到內建課程。
+function getInitialSource() {
+  const saved = state.activeSource;
+  if (
+    saved
+    && saved.type === "imported"
+    && saved.date === todayKey
+    && state.importedLessons.some((item) => item.id === saved.id)
+  ) {
+    return { type: "imported", id: saved.id };
+  }
+  return { type: "builtin" };
 }
 
-function getDayIndex() {
-  if (state.importedLessons.length) {
-    return activeLessonNumber % state.importedLessons.length;
-  }
-  return activeLessonNumber % 7;
+function setSource(source) {
+  activeSource = source.type === "imported" ? { type: "imported", id: source.id } : { type: "builtin" };
+  state.activeSource = { ...activeSource, date: todayKey };
+}
+
+function isImported() {
+  return activeSource.type === "imported" && Boolean(getImportedLesson());
+}
+
+function getImportedLesson() {
+  if (activeSource.type !== "imported") return null;
+  return state.importedLessons.find((item) => item.id === activeSource.id) || null;
+}
+
+function getBuiltinWeekNumber() {
+  return Math.floor(activeLessonNumber / 7);
+}
+
+function getBuiltinPack() {
+  return weeklyPacks[getBuiltinWeekNumber() % weeklyPacks.length];
 }
 
 function getPack() {
-  if (state.importedLessons.length) {
+  if (isImported()) {
     return {
-      name: "帕克英文匯入",
+      name: getImportedLesson().title,
       focus: "External listening source",
       lessons: state.importedLessons
     };
   }
-  return weeklyPacks[getWeekIndex()];
+  return getBuiltinPack();
 }
 
 function getLesson() {
-  return getPack().lessons[getDayIndex()];
+  if (isImported()) return getImportedLesson();
+  return getBuiltinPack().lessons[activeLessonNumber % 7];
 }
 
 function getDayState() {
+  if (isImported()) {
+    const imported = state.importedDays[todayKey] || {};
+    if (!imported[activeSource.id]) {
+      imported[activeSource.id] = createEmptyDay();
+    }
+    state.importedDays[todayKey] = imported;
+    return imported[activeSource.id];
+  }
+
   if (!state.days[todayKey]) {
     state.days[todayKey] = createEmptyDay();
   }
@@ -668,15 +783,27 @@ function getDayState() {
   return state.days[todayKey];
 }
 
-function createEmptyDay() {
+function createEmptyDay(earlierDone = false) {
   return {
     lessonNumber: activeLessonNumber || 0,
     tasks: {},
     quizChoice: "",
     dictation: "",
     note: "",
-    lessonFinished: false
+    lessonFinished: false,
+    earlierDone: Boolean(earlierDone)
   };
+}
+
+function hasOtherCompletionToday() {
+  const builtinDay = state.days[todayKey];
+  if (builtinDay && builtinDay.earlierDone) return true;
+  if (isImported() && builtinDay && builtinDay.lessonFinished) return true;
+
+  const importedToday = state.importedDays[todayKey] || {};
+  return Object.entries(importedToday).some(([id, day]) =>
+    day.lessonFinished && !(isImported() && id === activeSource.id)
+  );
 }
 
 function loadState() {
@@ -688,13 +815,27 @@ function loadState() {
     loaded = {};
   }
 
+  const days = loaded.days || {};
+  const importedLessons = (loaded.importedLessons || []).map((item, index) => ({
+    ...item,
+    id: item.id || `imported-legacy-${index}-${hashString(`${item.title}|${item.importedAt}`)}`
+  }));
+
+  // 舊版在使用匯入教材時，會把匯入教材的序號寫進今天的課號，這裡還原成內建課程進度。
+  const legacyTodayWasImported = importedLessons.length > 0 && !loaded.activeSource;
+  if (legacyTodayWasImported && days[todayKey] && !days[todayKey].lessonFinished) {
+    days[todayKey].lessonNumber = Number.isInteger(loaded.studyCursor) ? loaded.studyCursor : 0;
+  }
+
   return {
     startDate: loaded.startDate || todayKey,
-    days: loaded.days || {},
-    completedDates: loaded.completedDates || deriveCompletedDates(loaded.days || {}),
+    days,
+    completedDates: loaded.completedDates || deriveCompletedDates(days),
     studyCursor: Number.isInteger(loaded.studyCursor) ? loaded.studyCursor : 0,
     weeklyTests: loaded.weeklyTests || {},
-    importedLessons: loaded.importedLessons || [],
+    importedLessons,
+    importedDays: loaded.importedDays || {},
+    activeSource: loaded.activeSource || { type: "builtin", date: todayKey },
     mistakes: loaded.mistakes || []
   };
 }
@@ -709,7 +850,28 @@ function deriveCompletedDates(days) {
 }
 
 function saveState() {
-  localStorage.setItem(stateKey, JSON.stringify(state));
+  try {
+    localStorage.setItem(stateKey, JSON.stringify(state));
+  } catch (error) {
+    console.warn("無法儲存進度", error);
+  }
+}
+
+function createImportedId() {
+  return `imported-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
+}
+
+function isSafeUrl(url) {
+  return typeof url === "string" && /^https?:\/\//i.test(url.trim());
+}
+
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
 }
 
 function calculateStreak() {
