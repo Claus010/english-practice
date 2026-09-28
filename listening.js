@@ -1,6 +1,8 @@
 const today = new Date();
 const todayKey = formatDateKey(today);
 const stateKey = "englishListeningPracticeState";
+// 帕克英文教材匯入暫時停用；改回 true 並移除 listening.html 中 .source-library 的 hidden 即可恢復。
+const SOURCE_IMPORT_ENABLED = false;
 
 const tasks = [
   { id: "listen", title: "盲聽兩次", detail: "先不要看逐字稿，只抓人物、地點、目的。" },
@@ -718,7 +720,8 @@ function getActiveLessonNumber() {
 function getInitialSource() {
   const saved = state.activeSource;
   if (
-    saved
+    SOURCE_IMPORT_ENABLED
+    && saved
     && saved.type === "imported"
     && saved.date === todayKey
     && state.importedLessons.some((item) => item.id === saved.id)
