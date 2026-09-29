@@ -13,7 +13,7 @@
     <link rel="manifest" href="flashcards.webmanifest">
     <link rel="icon" href="icons/icon-192.png" type="image/png">
     <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
-    <link rel="stylesheet" href="flashcards.css?v=20260930">
+    <link rel="stylesheet" href="flashcards.css?v=20260930b">
   </head>
   <body>
     <div class="app">
@@ -156,7 +156,7 @@ deadline 截止日期</pre>
               <label><input type="radio" name="direction" value="zh"><span>中文</span></label>
               <label><input type="radio" name="direction" value="mix"><span>混合</span></label>
             </div>
-            <p class="field-label">預設口音 <small>（自動發音和字卡庫的喇叭用這個）</small></p>
+            <p class="field-label">預設口音 <small>（自動發音用這個）</small></p>
             <div class="segmented two" role="radiogroup" aria-label="預設口音">
               <label><input type="radio" name="accent" value="us"><span>美式</span></label>
               <label><input type="radio" name="accent" value="uk"><span>英式</span></label>
@@ -243,6 +243,10 @@ deadline 截止日期</pre>
           英文單字或片語
           <input id="editTerm" type="text" lang="en" autocapitalize="off" autocorrect="off" spellcheck="false" required>
         </label>
+        <div id="editVoices" class="accent-pair small" data-say="editTerm">
+          <button type="button" data-accent="us" aria-label="美式發音"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 5 6 9H3v6h3l5 4V5z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/></svg>美式</button>
+          <button type="button" data-accent="uk" aria-label="英式發音"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 5 6 9H3v6h3l5 4V5z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/></svg>英式</button>
+        </div>
         <label>
           中文意思
           <input id="editMeaning" type="text" required>
@@ -269,6 +273,6 @@ deadline 截止日期</pre>
 
     <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
 
-    <script src="flashcards.js?v=20260930"></script>
+    <script src="flashcards.js?v=20260930b"></script>
   </body>
 </html>

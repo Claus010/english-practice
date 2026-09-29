@@ -1,5 +1,5 @@
 // 讓單字卡在沒有網路時也能開啟：先抓網路上的最新版，失敗才用快取。
-const CACHE = "vocab-cards-v2";
+const CACHE = "vocab-cards-v3";
 const PRECACHE = [
   "flashcards.html",
   "flashcards.css",

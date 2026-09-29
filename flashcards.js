@@ -615,6 +615,8 @@ function escapeHtml(value) {
     .replace(/'/g, "&#039;");
 }
 
+const SPEAKER_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 5 6 9H3v6h3l5 4V5z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/></svg>';
+
 function deckItemHtml(card) {
   const due = dueText(card);
   return `
@@ -626,9 +628,10 @@ function deckItemHtml(card) {
         </span>
         <span class="deck-meaning">${escapeHtml(card.meaning)}</span>
       </button>
-      <button class="icon-btn" type="button" data-speak="${escapeHtml(card.id)}" aria-label="播放 ${escapeHtml(card.term)} 發音">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 5 6 9H3v6h3l5 4V5z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13"/></svg>
-      </button>
+      <div class="deck-voices">
+        <button class="voice-mini" type="button" data-speak="${escapeHtml(card.id)}" data-accent="us" aria-label="${escapeHtml(card.term)} 美式發音">${SPEAKER_SVG}<span>美</span></button>
+        <button class="voice-mini" type="button" data-speak="${escapeHtml(card.id)}" data-accent="uk" aria-label="${escapeHtml(card.term)} 英式發音">${SPEAKER_SVG}<span>英</span></button>
+      </div>
     </li>
   `;
 }
@@ -668,7 +671,7 @@ function handleListClick(event) {
   const speakBtn = event.target.closest("[data-speak]");
   if (speakBtn) {
     const card = getCard(speakBtn.dataset.speak);
-    if (card) speak(card.term);
+    if (card) speak(card.term, speakBtn.dataset.accent);
     return;
   }
   const editBtn = event.target.closest("[data-edit]");
@@ -910,6 +913,10 @@ els.editForm.addEventListener("submit", saveEdit);
 els.editCancel.addEventListener("click", closeEdit);
 els.editRelearn.addEventListener("click", relearnEdit);
 els.editDelete.addEventListener("click", deleteEdit);
+els.editVoices.addEventListener("click", (event) => {
+  const button = event.target.closest("[data-accent]");
+  if (button) speak(clean(els.editTerm.value), button.dataset.accent);
+});
 els.editDialog.addEventListener("click", (event) => {
   if (event.target === els.editDialog) closeEdit();
 });

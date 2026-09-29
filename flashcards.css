@@ -695,15 +695,17 @@ select:focus {
 
 .deck-head {
   display: flex;
+  flex-wrap: wrap;
   align-items: baseline;
   justify-content: space-between;
-  gap: 8px;
+  gap: 2px 8px;
 }
 
 .deck-term {
+  min-width: 0;
   font-size: 17px;
   font-weight: 800;
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
 }
 
 .deck-meaning {
@@ -734,8 +736,44 @@ select:focus {
   color: var(--good);
 }
 
-.deck-item .icon-btn {
-  background: none;
+.deck-voices {
+  flex: none;
+  display: flex;
+  gap: 4px;
+}
+
+.voice-mini {
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 1px;
+  width: 44px;
+  height: 48px;
+  padding: 0;
+  border: 0;
+  border-radius: 12px;
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.voice-mini svg {
+  width: 18px;
+  height: 18px;
+}
+
+.voice-mini:active {
+  filter: brightness(0.94);
+}
+
+#editVoices {
+  margin-top: -6px;
+}
+
+#editVoices button {
+  background: var(--accent-soft);
 }
 
 .empty {
