@@ -213,6 +213,9 @@ function render() {
     : `第 ${getBuiltinWeekNumber() + 1} 週 · ${pack.name}`;
   elements.openSource.hidden = !isSafeUrl(lesson.sourceUrl);
   elements.transcriptText.textContent = lesson.audio;
+  if (window.VocabQuickAdd) {
+    VocabQuickAdd.enhanceText(elements.transcriptText, { note: `聽力：${lesson.title}` });
+  }
   elements.translationText.textContent = lesson.translation;
   elements.dictationPrompt.textContent = "請聽「重播關鍵句」後，把英文句子打在下方。";
   elements.dictationBox.value = day.dictation || "";

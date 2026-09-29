@@ -565,6 +565,11 @@ h3 {
 
   .word-actions {
     width: 100%;
-    flex-direction: column;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .word-actions button {
+    padding: 0 6px;
   }
 }

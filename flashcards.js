@@ -103,6 +103,7 @@ function normalizeState(data) {
     log: data.log && typeof data.log === "object" ? data.log : {},
     settings: {
       direction: "en",
+      accent: "us",
       autoSpeak: false,
       sessionLimit: 50,
       ...(data.settings || {})
@@ -235,34 +236,48 @@ function streakDays() {
 
 /* ---------- 發音 ---------- */
 
-let englishVoice = null;
+// 用手機／電腦內建的語音；名稱在前面的是各平台比較自然的聲音。
+const ACCENTS = {
+  us: { lang: "en-US", name: "美式", prefer: /Samantha|Ava|Allison|Google US|Aria|Jenny|Guy/i },
+  uk: { lang: "en-GB", name: "英式", prefer: /Daniel|Serena|Kate|Arthur|Google UK|Sonia|Libby|Ryan/i }
+};
+const accentVoices = { us: null, uk: null };
+let voicesLoaded = false;
+const warnedMissing = {};
 
-function pickVoice() {
+function pickVoices() {
   if (!("speechSynthesis" in window)) return;
   const voices = speechSynthesis.getVoices();
-  englishVoice =
-    voices.find((v) => v.lang === "en-US" && /Samantha|Google US|Aria|Jenny|Ava/i.test(v.name)) ||
-    voices.find((v) => v.lang.replace("_", "-").startsWith("en-US")) ||
-    voices.find((v) => v.lang.startsWith("en")) ||
-    null;
+  voicesLoaded = voices.length > 0;
+  Object.entries(ACCENTS).forEach(([key, accent]) => {
+    const matching = voices.filter((v) => v.lang.replace("_", "-").toLowerCase() === accent.lang.toLowerCase());
+    accentVoices[key] = matching.find((v) => accent.prefer.test(v.name)) || matching.find((v) => v.localService) || matching[0] || null;
+  });
 }
 
 if ("speechSynthesis" in window) {
-  pickVoice();
-  speechSynthesis.addEventListener("voiceschanged", pickVoice);
+  pickVoices();
+  speechSynthesis.addEventListener("voiceschanged", pickVoices);
 }
 
-function speak(text) {
+function speak(text, accentKey = state.settings.accent) {
   if (!text) return;
   if (!("speechSynthesis" in window)) {
     showToast("這個瀏覽器不支援發音");
     return;
   }
+  const accent = ACCENTS[accentKey] ? accentKey : "us";
+  if (!voicesLoaded) pickVoices();
   speechSynthesis.cancel();
   const utterance = new SpeechSynthesisUtterance(text);
-  utterance.lang = "en-US";
+  utterance.lang = ACCENTS[accent].lang;
   utterance.rate = 0.9;
-  if (englishVoice) utterance.voice = englishVoice;
+  if (accentVoices[accent]) {
+    utterance.voice = accentVoices[accent];
+  } else if (voicesLoaded && !warnedMissing[accent]) {
+    warnedMissing[accent] = true;
+    showToast(`這個裝置沒有${ACCENTS[accent].name}語音，會用預設聲音唸`);
+  }
   speechSynthesis.speak(utterance);
 }
 
@@ -411,12 +426,12 @@ function renderSessionCard() {
   els.cardDirection.textContent = dir === "en" ? "看英文，想中文意思" : "看中文，想英文單字";
   els.cardPrompt.textContent = dir === "en" ? card.term : card.meaning;
   els.cardPrompt.lang = dir === "en" ? "en" : "zh-Hant";
-  els.speakPrompt.hidden = dir !== "en";
+  els.promptVoices.hidden = dir !== "en";
   els.cardAnswer.textContent = dir === "en" ? card.meaning : card.term;
   els.cardAnswer.lang = dir === "en" ? "zh-Hant" : "en";
-  els.speakAnswer.hidden = dir === "en";
+  els.answerVoices.hidden = dir === "en";
   els.cardExample.textContent = card.example;
-  els.cardExample.hidden = !card.example;
+  els.exampleWrap.hidden = !card.example;
   els.cardNote.textContent = card.note;
   els.cardNote.hidden = !card.note;
 
@@ -748,6 +763,9 @@ function renderMore() {
   document.querySelectorAll('input[name="direction"]').forEach((input) => {
     input.checked = input.value === state.settings.direction;
   });
+  document.querySelectorAll('input[name="accent"]').forEach((input) => {
+    input.checked = input.value === state.settings.accent;
+  });
   els.autoSpeak.checked = Boolean(state.settings.autoSpeak);
   els.sessionLimit.value = String(state.settings.sessionLimit);
   els.statLearning.textContent = state.cards.filter((card) => !isMastered(card)).length;
@@ -850,20 +868,19 @@ els.doneBack.addEventListener("click", () => {
   els.reviewDone.hidden = true;
   renderHome();
 });
-els.flashcard.addEventListener("click", reveal);
+// 卡片上的「美式／英式」按鈕只負責發音，點卡片其他地方才翻面。
+els.flashcard.addEventListener("click", (event) => {
+  const button = event.target.closest("[data-accent]");
+  if (!button) {
+    reveal();
+    return;
+  }
+  const card = session && getCard(session.queue[0]);
+  if (!card) return;
+  const target = button.closest("[data-say]").dataset.say;
+  speak(target === "example" ? card.example : card.term, button.dataset.accent);
+});
 els.revealBtn.addEventListener("click", reveal);
-els.speakPrompt.addEventListener("click", (event) => {
-  event.stopPropagation();
-  speak(els.cardPrompt.textContent);
-});
-els.speakAnswer.addEventListener("click", (event) => {
-  event.stopPropagation();
-  speak(els.cardAnswer.textContent);
-});
-els.cardExample.addEventListener("click", (event) => {
-  event.stopPropagation();
-  speak(els.cardExample.textContent);
-});
 els.gradeRow.addEventListener("click", (event) => {
   const button = event.target.closest("[data-grade]");
   if (button) grade(button.dataset.grade);
@@ -903,6 +920,13 @@ document.querySelectorAll('input[name="direction"]').forEach((input) => {
     saveState();
   });
 });
+document.querySelectorAll('input[name="accent"]').forEach((input) => {
+  input.addEventListener("change", () => {
+    state.settings.accent = input.value;
+    saveState();
+    speak("schedule", input.value); // 試聽：schedule 美英唸法差很多
+  });
+});
 els.autoSpeak.addEventListener("change", () => {
   state.settings.autoSpeak = els.autoSpeak.checked;
   saveState();
@@ -923,8 +947,10 @@ els.clearAll.addEventListener("click", clearAll);
 // 電腦鍵盤：空白鍵翻面，1／2／3 評分
 document.addEventListener("keydown", (event) => {
   if (!session || currentTab() !== "review" || els.editDialog.open) return;
-  if (event.target.closest("input, textarea, select")) return;
-  if ((event.key === " " || event.key === "Enter") && !session.revealed) {
+  const target = event.target instanceof Element ? event.target : document.body;
+  if (target.closest("input, textarea, select")) return;
+  const onButton = target.closest("button, a");
+  if ((event.key === " " || event.key === "Enter") && !session.revealed && !onButton) {
     event.preventDefault();
     reveal();
   } else if (session.revealed && ["1", "2", "3"].includes(event.key)) {
@@ -932,9 +958,25 @@ document.addEventListener("keydown", (event) => {
   }
 });
 
-// 隔天再打開時更新「今天要複習」
+// 其他練習頁可能剛加入單字，先重新讀取，避免用舊資料覆蓋掉。
+function reloadState() {
+  const fresh = loadState();
+  state.cards = fresh.cards;
+  state.log = fresh.log;
+  state.settings = fresh.settings;
+}
+
+window.addEventListener("storage", (event) => {
+  if (event.key !== STORAGE_KEY) return;
+  reloadState();
+  refreshCurrent();
+});
+
+// 回到這頁（或隔天再打開）時更新「今天要複習」
 document.addEventListener("visibilitychange", () => {
-  if (document.visibilityState === "visible") refreshCurrent();
+  if (document.visibilityState !== "visible") return;
+  reloadState();
+  refreshCurrent();
 });
 
 if ("serviceWorker" in navigator) {

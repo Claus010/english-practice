@@ -371,14 +371,6 @@ main {
   font-weight: 700;
 }
 
-.card-front {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  max-width: 100%;
-}
-
 #cardPrompt {
   margin: 0;
   font-size: clamp(28px, 9vw, 42px);
@@ -402,12 +394,6 @@ main {
   border-top: 1px dashed var(--line);
 }
 
-.answer-line {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
 .card-answer {
   margin: 0;
   font-size: 24px;
@@ -415,21 +401,61 @@ main {
   overflow-wrap: anywhere;
 }
 
-.card-example {
+.accent-pair {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+}
+
+.accent-pair button {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 40px;
+  padding: 0 14px 0 10px;
   border: 0;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.accent-pair button:active {
+  filter: brightness(0.94);
+}
+
+.accent-pair svg {
+  width: 18px;
+  height: 18px;
+}
+
+.accent-pair.small {
+  justify-content: flex-start;
+}
+
+.accent-pair.small button {
+  min-height: 34px;
+  padding: 0 12px 0 8px;
+  font-size: 13px;
+  background: var(--panel);
+}
+
+.example-wrap {
+  display: grid;
+  gap: 8px;
+  width: 100%;
+  padding: 12px 14px;
   border-radius: 12px;
   background: var(--bg);
-  padding: 10px 14px;
-  color: var(--ink);
+}
+
+.card-example {
+  margin: 0;
   font-size: 16px;
   text-align: left;
   line-height: 1.5;
-}
-
-.card-example::before {
-  content: "▶ ";
-  color: var(--accent);
-  font-size: 12px;
+  overflow-wrap: anywhere;
 }
 
 .card-note {
@@ -526,6 +552,7 @@ select {
   background: var(--panel);
   color: var(--ink);
   font-size: 16px; /* 16px 以上，iPhone 聚焦時不會自動放大 */
+  font-weight: 400;
 }
 
 textarea {
@@ -728,6 +755,14 @@ select:focus {
   padding: 4px;
   border-radius: 12px;
   background: var(--bg);
+}
+
+.segmented.two {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+.field-label small {
+  font-weight: 400;
 }
 
 .segmented label {

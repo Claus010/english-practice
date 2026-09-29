@@ -1739,6 +1739,9 @@ function renderWords() {
     speakButton.addEventListener("click", () => speak(example, "vocab"));
 
     actions.append(exampleButton, speakButton);
+    if (window.VocabQuickAdd) {
+      actions.append(VocabQuickAdd.addButton({ term: word, meaning, example, note: "每日字彙" }));
+    }
     item.append(body, actions);
     list.append(item);
   });
@@ -1746,6 +1749,9 @@ function renderWords() {
 
 function renderReading() {
   document.getElementById("readingText").textContent = lessonForToday.reading;
+  if (window.VocabQuickAdd) {
+    VocabQuickAdd.enhanceText(document.getElementById("readingText"), { note: "每日短文" });
+  }
   document.getElementById("translationText").textContent = lessonForToday.translation;
   document.getElementById("translationText").hidden = true;
   document.getElementById("showTranslation").textContent = "顯示翻譯";
@@ -1952,6 +1958,9 @@ function renderWrongWords() {
       <span>上次選：${item.chosen}</span>
       <span>${item.example}</span>
     `;
+    if (window.VocabQuickAdd) {
+      block.append(VocabQuickAdd.addButton({ term: item.word, meaning: item.correct, example: item.example, note: "週測驗錯題" }));
+    }
     list.append(block);
   });
 }
