@@ -1,0 +1,265 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="theme-color" content="#f4f7f8" media="(prefers-color-scheme: light)">
+    <meta name="theme-color" content="#0f1417" media="(prefers-color-scheme: dark)">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="單字卡">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <title>我的單字卡</title>
+    <link rel="manifest" href="flashcards.webmanifest">
+    <link rel="icon" href="icons/icon-192.png" type="image/png">
+    <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+    <link rel="stylesheet" href="flashcards.css">
+  </head>
+  <body>
+    <div class="app">
+      <header class="topbar">
+        <h1 id="viewTitle">複習</h1>
+        <span id="dueBadge" class="badge">今天 0 張</span>
+      </header>
+
+      <main>
+        <!-- 複習 -->
+        <section id="view-review" class="view" data-view="review">
+          <div id="reviewIdle">
+            <div class="panel hero">
+              <p class="hero-label">今天要複習</p>
+              <strong id="dueCount" class="hero-number">0</strong>
+              <p id="idleHint" class="hint"></p>
+              <button id="startReview" class="primary big" type="button">開始複習</button>
+              <button id="practiceMore" class="secondary big" type="button" hidden>再練 10 張最容易忘的</button>
+            </div>
+            <div class="mini-stats">
+              <div><span>全部字卡</span><strong id="statTotal">0</strong></div>
+              <div><span>今天已複習</span><strong id="statToday">0</strong></div>
+              <div><span>連續天數</span><strong id="statStreak">0</strong></div>
+            </div>
+          </div>
+
+          <div id="reviewSession" hidden>
+            <div class="session-top">
+              <button id="quitReview" class="text-btn" type="button">結束</button>
+              <div class="progress" aria-hidden="true"><div id="progressFill"></div></div>
+              <span id="progressText" class="progress-text">0 / 0</span>
+            </div>
+
+            <article id="flashcard" class="flashcard" tabindex="0" role="button" aria-label="點一下翻面">
+              <p id="cardDirection" class="card-kicker">看英文，想中文意思</p>
+              <div class="card-front">
+                <h2 id="cardPrompt"></h2>
+                <button id="speakPrompt" class="icon-btn" type="button" aria-label="播放發音">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 5 6 9H3v6h3l5 4V5z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13"/></svg>
+                </button>
+              </div>
+              <p id="tapHint" class="tap-hint">點一下看答案</p>
+              <div id="cardBack" class="card-back" hidden>
+                <div class="answer-line">
+                  <p id="cardAnswer" class="card-answer"></p>
+                  <button id="speakAnswer" class="icon-btn" type="button" aria-label="播放發音" hidden>
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 5 6 9H3v6h3l5 4V5z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13"/></svg>
+                  </button>
+                </div>
+                <button id="cardExample" class="card-example" type="button" lang="en" hidden></button>
+                <p id="cardNote" class="card-note" hidden></p>
+              </div>
+            </article>
+
+            <button id="revealBtn" class="primary big" type="button">顯示答案</button>
+            <div id="gradeRow" class="grade-row" hidden>
+              <button class="grade again" data-grade="again" type="button"><strong>忘記</strong><span id="ivAgain"></span></button>
+              <button class="grade hard" data-grade="hard" type="button"><strong>模糊</strong><span id="ivHard"></span></button>
+              <button class="grade good" data-grade="good" type="button"><strong>記得</strong><span id="ivGood"></span></button>
+            </div>
+          </div>
+
+          <div id="reviewDone" class="panel hero" hidden>
+            <p class="hero-label">這一輪完成了</p>
+            <div class="done-grid">
+              <div class="good-text"><strong id="doneGood">0</strong><span>記得</span></div>
+              <div class="hard-text"><strong id="doneHard">0</strong><span>模糊</span></div>
+              <div class="again-text"><strong id="doneAgain">0</strong><span>忘記過</span></div>
+            </div>
+            <p id="doneHint" class="hint"></p>
+            <button id="doneBack" class="primary big" type="button">回到首頁</button>
+          </div>
+        </section>
+
+        <!-- 新增 -->
+        <section id="view-add" class="view" data-view="add" hidden>
+          <form id="addForm" class="panel form" autocomplete="off">
+            <label>
+              英文單字或片語
+              <span class="field-row">
+                <input id="termInput" type="text" lang="en" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="next" placeholder="例如：negotiate" required>
+                <a id="lookupLink" class="lookup" href="#" target="_blank" rel="noopener" aria-disabled="true">查詞典</a>
+              </span>
+            </label>
+            <label>
+              中文意思
+              <input id="meaningInput" type="text" enterkeyhint="next" placeholder="例如：協商；談判" required>
+            </label>
+            <label>
+              例句 <small>（選填）</small>
+              <textarea id="exampleInput" rows="2" lang="en" autocapitalize="sentences" placeholder="例如：We need to negotiate a better price."></textarea>
+            </label>
+            <label>
+              備註 <small>（選填）</small>
+              <input id="noteInput" type="text" enterkeyhint="done" placeholder="在哪裡看到、易混淆的字、發音提醒">
+            </label>
+            <button class="primary big" type="submit">加入字卡</button>
+          </form>
+
+          <details class="panel bulk">
+            <summary>一次貼上多個單字</summary>
+            <p class="hint">每行一個，格式：<code>單字 - 中文 | 例句</code>，也可以用 Tab、冒號或逗號隔開，例如：</p>
+            <pre class="example-block">invoice - 發票 | Please send the invoice today.
+look forward to：期待
+deadline 截止日期</pre>
+            <textarea id="bulkInput" rows="5" lang="en" autocapitalize="off" spellcheck="false" placeholder="貼上多行單字"></textarea>
+            <button id="bulkAdd" class="secondary big" type="button">全部加入</button>
+          </details>
+
+          <div id="recentWrap" hidden>
+            <h2 class="section-title">剛加入</h2>
+            <ul id="recentList" class="deck-list"></ul>
+          </div>
+        </section>
+
+        <!-- 字卡庫 -->
+        <section id="view-deck" class="view" data-view="deck" hidden>
+          <input id="searchInput" class="search" type="search" placeholder="搜尋英文、中文或例句" autocapitalize="off" autocorrect="off" spellcheck="false">
+          <div class="chips" role="group" aria-label="篩選">
+            <button class="chip" data-filter="all" type="button" aria-pressed="true">全部</button>
+            <button class="chip" data-filter="due" type="button" aria-pressed="false">今天要複習</button>
+            <button class="chip" data-filter="hard" type="button" aria-pressed="false">常忘記</button>
+            <button class="chip" data-filter="mastered" type="button" aria-pressed="false">已熟悉</button>
+          </div>
+          <p id="deckCount" class="hint deck-count"></p>
+          <ul id="deckList" class="deck-list"></ul>
+        </section>
+
+        <!-- 更多 -->
+        <section id="view-more" class="view" data-view="more" hidden>
+          <div class="panel">
+            <h2 class="section-title">複習設定</h2>
+            <p class="field-label">卡片正面顯示</p>
+            <div class="segmented" role="radiogroup" aria-label="卡片正面顯示">
+              <label><input type="radio" name="direction" value="en"><span>英文</span></label>
+              <label><input type="radio" name="direction" value="zh"><span>中文</span></label>
+              <label><input type="radio" name="direction" value="mix"><span>混合</span></label>
+            </div>
+            <label class="switch-row">
+              <span>出現英文時自動發音</span>
+              <input id="autoSpeak" type="checkbox">
+            </label>
+            <label class="select-row">
+              <span>每輪最多複習</span>
+              <select id="sessionLimit">
+                <option value="20">20 張</option>
+                <option value="30">30 張</option>
+                <option value="50">50 張</option>
+                <option value="100">100 張</option>
+              </select>
+            </label>
+          </div>
+
+          <div class="panel">
+            <h2 class="section-title">統計</h2>
+            <div class="mini-stats flat">
+              <div><span>學習中</span><strong id="statLearning">0</strong></div>
+              <div><span>已熟悉</span><strong id="statMastered">0</strong></div>
+              <div><span>累計複習</span><strong id="statReviews">0</strong></div>
+            </div>
+          </div>
+
+          <div class="panel">
+            <h2 class="section-title">備份</h2>
+            <p class="hint">字卡只存在這支手機的瀏覽器裡。清除瀏覽資料或換手機前，記得先匯出備份。</p>
+            <div class="button-pair">
+              <button id="exportBtn" class="secondary" type="button">匯出備份</button>
+              <button id="importBtn" class="secondary" type="button">匯入備份</button>
+            </div>
+            <input id="importFile" type="file" accept="application/json,.json" hidden>
+          </div>
+
+          <div class="panel">
+            <h2 class="section-title">加到手機主畫面</h2>
+            <p class="hint"><strong>iPhone（Safari）</strong>：點下方「分享」按鈕 →「加入主畫面」。</p>
+            <p class="hint"><strong>Android（Chrome）</strong>：點右上角 ⋮ →「加到主畫面」或「安裝應用程式」。</p>
+            <p class="hint">加到主畫面後會像 App 一樣全螢幕開啟，沒有網路也能使用。</p>
+          </div>
+
+          <div class="panel">
+            <h2 class="section-title">其他練習</h2>
+            <nav class="link-list">
+              <a href="index.html">每日字彙文法</a>
+              <a href="listening.html">聽力練習</a>
+            </nav>
+          </div>
+
+          <button id="clearAll" class="danger-link" type="button">刪除全部字卡</button>
+        </section>
+      </main>
+    </div>
+
+    <nav class="tabbar" aria-label="主選單">
+      <div class="tabbar-inner">
+        <button data-tab="review" type="button">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="7" width="13" height="14" rx="2"/><path d="M8 3h11a2 2 0 0 1 2 2v12"/></svg>
+          <span>複習</span>
+        </button>
+        <button data-tab="add" type="button">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg>
+          <span>新增</span>
+        </button>
+        <button data-tab="deck" type="button">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6h12M9 12h12M9 18h12"/><path d="M4 6h.01M4 12h.01M4 18h.01" stroke-width="3"/></svg>
+          <span>字卡庫</span>
+        </button>
+        <button data-tab="more" type="button">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
+          <span>更多</span>
+        </button>
+      </div>
+    </nav>
+
+    <dialog id="editDialog" aria-labelledby="editTitle">
+      <form id="editForm" class="form" method="dialog" autocomplete="off">
+        <h2 id="editTitle" class="section-title">編輯字卡</h2>
+        <label>
+          英文單字或片語
+          <input id="editTerm" type="text" lang="en" autocapitalize="off" autocorrect="off" spellcheck="false" required>
+        </label>
+        <label>
+          中文意思
+          <input id="editMeaning" type="text" required>
+        </label>
+        <label>
+          例句
+          <textarea id="editExample" rows="2" lang="en"></textarea>
+        </label>
+        <label>
+          備註
+          <input id="editNote" type="text">
+        </label>
+        <p id="editInfo" class="hint"></p>
+        <div class="button-pair">
+          <button id="editCancel" class="secondary" type="button">取消</button>
+          <button id="editSave" class="primary" type="submit">儲存</button>
+        </div>
+        <div class="button-pair">
+          <button id="editRelearn" class="text-btn" type="button">重新排入今天複習</button>
+          <button id="editDelete" class="text-btn danger" type="button">刪除這張</button>
+        </div>
+      </form>
+    </dialog>
+
+    <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+
+    <script src="flashcards.js"></script>
+  </body>
+</html>
